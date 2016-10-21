@@ -1,11 +1,14 @@
 package org.usfirst.frc.team3309.robot;
 
 
+import java.util.Arrays;
+
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.Joystick.RumbleType;
 
 /**
+ * Created: Brandon Capparelli
  * Summary of methods used: double axis = Controller.getRawAxis(axisNumber);
  * boolean button = Controller.getRawButton(buttonNumber); Constants define
  * these values in java, so replace "buttonNumber" with "BUTTON_A" This Class is
@@ -13,7 +16,17 @@ import edu.wpi.first.wpilibj.Joystick.RumbleType;
  * class and makes it work with xbox remotes The methods below are called in
  * TeleopPeriodic inside the main robot class to see if buttons are presed or
  * not. (Axes too)
+ * 
+ * Dead band Array: stores values for the "deadband" in each axis. 
+ * Use the method "setDeadband(channel,value)" to set a deadband for a particular channel
+ * 
+ * Analog Polarity Array: stores polarity values for each channel or axis.
+ * Use the method "setPolarity(channel,polarity)" to specify the polarity for that axis.
+ * 
+ * Digial Polarity Array: stores polarity values for each digital channel.
+ * Not yet implemented.
  *
+ *Last Modified: Rich Mayfield
  */
 public class XboxController extends GenericHID {
 
@@ -48,20 +61,52 @@ public class XboxController extends GenericHID {
 	public static final int AXIS_RIGHT_X = 4;
 	public static final int AXIS_RIGHT_Y = 5;
 	public static final int AXIS_DPAD = 6;
+	
+	private static double[] DEADBAND_ARRAY = new double[20];
+	private static int[] ANALOG_POLARITY_ARRAY = new int[20];
+	private static boolean[] DIGITAL_POLARITY_ARRAY = new boolean[20];
+	
+	
+
 
 	// main instance joystick being called throughout class
 	Joystick controller;
 
-	// info for usage of xbox remotes found at -
-	// http://www.chiefdelphi.com/forums/showthread.php?t=83597
-	// Constructor, takes number and makes xbox remote that number joystick that
-	// is set by driver station
+	public void init()
+	{
+		
+	}
+	
+	//Sets the dead band for a specific axis or channel
+	public void setDeadband (int channel, double value)
+	{
+		DEADBAND_ARRAY[channel] = value;
+	}
+	
+	//Sets the dead band for every axis
+	public void setDeadband(double value)
+	{
+		Arrays.fill(DEADBAND_ARRAY, value);
+	}
+	
+	public void setPolarityAnalog(int channel,int polarity)
+	{
+		if(polarity>1) polarity = 1; //Prevent this method from scaling
+		if (polarity<-1)polarity = -1;
+		ANALOG_POLARITY_ARRAY[channel] = polarity;
+	}
+	
+	public void setPolarityDigital(int channel, boolean polarity)
+	{
+		DIGITAL_POLARITY_ARRAY[channel] = polarity;
+	}
+	
 	public XboxController(int joystickNum) {
 		controller = new Joystick(joystickNum);
 	}
 
 	// Now, here are all the button methods, they all return a boolean that
-	// returns true if button is pressed (obviously)
+	// returns true if button is pressed
 	public boolean getA() {
 		return controller.getRawButton(BUTTON_A);
 	}
@@ -70,11 +115,11 @@ public class XboxController extends GenericHID {
 		return controller.getRawButton(BUTTON_B);
 	}
 
-	public boolean getXBut() {
+	public boolean getXButton() {
 		return controller.getRawButton(BUTTON_X);
 	}
 
-	public boolean getYBut() {
+	public boolean getYButton() {
 
 		return controller.getRawButton(BUTTON_Y);
 	}
@@ -127,20 +172,28 @@ public class XboxController extends GenericHID {
 	// You may notice that each method has a temp value and a scaledVal.
 	// The temp value is what that current axis is at.
 	// The scaledVal just takes the temp value and scales it.
-	// Chagne the scaleAxis method to add a deadband, or to add a constant
+	// Chagne the deadBand method to add a deadband, or to add a constant
 	// multiplier to every axis.
 	// Returns from -1 to 1
+	
+
 	public double getLeftX() {
 		double temp = controller.getRawAxis(AXIS_LEFT_X);
-		double scaledVal = scaleAxis(temp);
-		return scaledVal;
+		
+		
+		temp = deadBand(AXIS_LEFT_X,temp);
+		//System.out.println(temp);
+		return temp;
 	}
 
 	// Returns from -1 to 1
 	public double getLeftY() {
 		double temp = controller.getRawAxis(AXIS_LEFT_Y);
-		double scaledVal = scaleAxis(temp);
-		return -scaledVal;
+		
+		temp = deadBand(AXIS_LEFT_Y,temp);
+		temp = ANALOG_POLARITY_ARRAY[AXIS_LEFT_Y] * temp;
+		//System.out.println(temp);
+		return temp;
 	}
 
 	public double getRightTrigger() {
@@ -156,96 +209,91 @@ public class XboxController extends GenericHID {
 	// Returns from -1 to 1
 	public double getRightX() {
 		double temp = controller.getRawAxis(AXIS_RIGHT_X);
-		double scaledVal = scaleAxis(temp);
+		double scaledVal = deadBand(AXIS_RIGHT_X,temp);
 		return scaledVal;
 	}
 
 	// Returns from -1 to 1
 	public double getRightY() {
 		double temp = controller.getRawAxis(AXIS_RIGHT_Y);
-		double scaledVal = scaleAxis(temp);
-		return -scaledVal;
+		double scaledVal = deadBand(AXIS_RIGHT_Y,temp);
+		return scaledVal;
 	}
 
-	private double scaleAxis(double value) {
-		if (Math.abs(value) < .1) {
-			value = 0;
+	private double deadBand(int channel, double input) {
+		if (Math.abs(input) < DEADBAND_ARRAY[channel]) {
+			input = 0;
 		}
-		return value;
+		return input;
 	}
 
-	public double getX(Hand hand) {
-		if (hand.equals(Hand.kLeft)) {
-			return getLeftX();
-		} else {
-			return getRightX();
-		}
-	}
-
-	public double getY(Hand hand) {
-		if (hand.equals(Hand.kLeft)) {
-			return getLeftY();
-		} else {
-			return getRightY();
-		}
-	}
-
-	public double getZ(Hand hand) {
-		if (hand.equals(Hand.kLeft)) {
-			return getLeftTrigger();
-		} else {
-			return getRightTrigger();
-		}
-	}
-
-	public double getTwist() {
-		return 0;
-	}
-
-	public double getThrottle() {
-		return 0;
-	}
 
 	public double getRawAxis(int i) {
 		return controller.getRawAxis(i);
 	}
 
-	public boolean getTrigger(Hand hand) {
-		if (hand.equals(Hand.kLeft)) {
-			return getLB();
-		} else {
-			return getRB();
-		}
-	}
-
-	public boolean getTop(Hand hand) {
-		return false;
-	}
-
-	public boolean getBumper(Hand hand) {
-		if (hand.equals(Hand.kLeft)) {
-			return getLB();
-		} else {
-			return getRB();
-		}
-	}
 
 	public boolean getRawButton(int i) {
 		return controller.getRawButton(i);
 	}
 
-	@Override
-	public int getPOV(int pov) {
-		return controller.getPOV(0);
-	}
-
-	@Override
-	public int getPOV() {
-		return controller.getPOV(0);
-	}
 
 	public void setRumble(float value) {
 		controller.setRumble(RumbleType.kRightRumble, value);
+	}
+
+	@Override
+	public double getX(Hand hand) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public double getY(Hand hand) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public double getZ(Hand hand) {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public double getTwist() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public double getThrottle() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+
+	@Override
+	public boolean getTrigger(Hand hand) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public boolean getTop(Hand hand) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public boolean getBumper(Hand hand) {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public int getPOV(int pov) {
+		// TODO Auto-generated method stub
+		return 0;
 	}
 
 }// END OF CLASS
