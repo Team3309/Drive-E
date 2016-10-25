@@ -6,6 +6,7 @@ import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.TimeZone;
@@ -44,7 +45,7 @@ public class BlackBox {
 	
 	private static String fileName = "LogFile.txt";
 	
-	private static String[] HEADER;
+	private static ArrayList<String> HEADER = new ArrayList<String>();
 
 	private static PrintWriter writer;
 	
@@ -61,7 +62,25 @@ public class BlackBox {
 	 */
 	public static void initializeLog(String[] headerArray, boolean match, boolean verbose)
 	{
-		HEADER = headerArray;
+		for(int i=0;i<headerArray.length;i++)
+		{
+			HEADER.add(headerArray[i]);
+		}
+		
+		if(HEADER.get(0)!= "Timestamp")
+		{
+			if(HEADER.get(0).toLowerCase().contains("time")) //Probably called first field something to do with time, so fix it
+			{
+				//User entered a timestamp for first field, but in a non-standard form
+				System.out.println("Next time call your first field 'Timestamp'");
+				HEADER.set(0, "Timestamp"); //Set the first element to "Timestamp"
+			}else
+			{
+				//User probably didn't enter a timestamp field at all
+				HEADER.add(0, "Timestamp"); //Add a "Timestamp" field at the beginning 
+				System.out.println("A proper header always begins with a Timestamp");
+			}
+		}
 		
 		DateFormat dateFormat = new SimpleDateFormat("MM/dd/YYYY");
 		DateFormat timeFormat = new SimpleDateFormat("HH:mm:ss");
@@ -165,15 +184,15 @@ public class BlackBox {
 		
 		
 		// Assemble a dataArray from a HashMap, start at 1 to skip the timestamp
-		for(int i = 1;i<HEADER.length;i++)
+		for(int i = 1;i<HEADER.size();i++)
 		{
-			Double value = logHash.get(HEADER[i]);
+			Double value = logHash.get(HEADER.get(i));
 			
 			if(value == null) //Checks to see if there's a null value in that bucket
 			{
 				value = 0.0; //Set value to zero
-				System.out.println("No value for '" + HEADER[i] + "'! Don't you want to log that?");
-				logHash.put(HEADER[i], 0.0); //Put a value in there so we only throw the above error once
+				System.out.println("No value for '" + HEADER.get(i) + "'! Don't you want to log that?");
+				logHash.put(HEADER.get(i), 0.0); //Put a value in there so we only throw the above error once
 			}
 			dataString = dataString + Double.toString(value) + ",";
 		}
@@ -191,15 +210,14 @@ public class BlackBox {
 	{
 		//Compose string from headerArray and build the logHash HashMap
 		String headerString = "";
-		String headerArray[] = HEADER;
 		
-		for(int i = 0; i<headerArray.length; i++)
+		for(int i = 0; i<HEADER.size(); i++)
 		{
-			headerString = headerString + headerArray[i] + ","; //Compose a header string
+			headerString = headerString + HEADER.get(i) + ","; //Compose a header string
 			
-			if(!logHash.containsKey(headerArray[i]))	//Check to see if we already have a key in our HashMap
+			if(!logHash.containsKey(HEADER.get(i)))	//Check to see if we already have a key in our HashMap
 			{
-				logHash.put(headerArray[i], null); // Initialize keys for the logHash
+				logHash.put(HEADER.get(i), null); // Initialize keys for the logHash
 			}
 		}
 		//Delete the last comma from the headerString
@@ -216,7 +234,7 @@ public class BlackBox {
 		}else
 		{
 			logHash.put(key, value); 		// Add the key if it doesn't exist
-			HEADER[HEADER.length] = key;	// Add the field to the header
+			HEADER.add(key);	// Add the field to the header
 			writeHeader();					// Re-write the header if parameter is added
 			
 			// Throw an error reminding to add to header upon initilization if we have to add to HashMap

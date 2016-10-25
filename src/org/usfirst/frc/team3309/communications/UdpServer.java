@@ -14,6 +14,7 @@ public class UdpServer extends Thread {
 	int port = 2225;
 	MulticastSocket socket;
 	InetAddress group;
+	boolean ACTIVE = false;
 	
 	public UdpServer()
 	{
@@ -36,17 +37,25 @@ public class UdpServer extends Thread {
 		//start();
 	}
 	
+	public void send()
+	{
+		if(ACTIVE)
+		{
+			try {
+				byte[] buf = new String("Test").trim().getBytes();
+				DatagramPacket packet = new DatagramPacket(buf, buf.length, group, port);
+				socket.send(packet);
+			} catch (IOException e) {
+				System.out.println("error sending data");
+				e.printStackTrace();
+			}
+		}
+	}
+	
 	public void put(String key, String value)
 	{
 		//System.out.println("Sent packet- " + key + " - " + value);
-		try {
-			byte[] buf = new String(key+"~"+value).trim().getBytes();
-			DatagramPacket packet = new DatagramPacket(buf, buf.length, group, port);
-			socket.send(packet);
-		} catch (IOException e) {
-			System.out.println("error sending data");
-			e.printStackTrace();
-		}
+
 	}
 	
 	public void put(String key, int value)
